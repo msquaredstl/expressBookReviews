@@ -43,7 +43,7 @@ regd_users.post("/login", (req, res) => {
         return res.status(401).json({ message: "Invalid username or password." });
     }
 
-    const token = jwt.sign({ username }, "fingerprint_customer", { expiresIn: '1h' });
+    const token = jwt.sign({ username }, "access", { expiresIn: '1h' });
 
     return res.status(200).json({
         message: "Login successful",
@@ -92,6 +92,44 @@ regd_users.put("/auth/review/:isbn", (req, res) => {
         user: username,
         review: review
     });
+});
+
+regd_users.delete("/auth/review/:isbn", (req, res) => {
+    const requestedIsbn = req.params.isbn;
+    const username = req.user?.username;
+
+    if (!username) {
+        return res.status(401).json({ message: "Unauthorized. Username missing from token." });
+    }
+
+    let found = false;
+    const bookKeys = Object.keys(books);
+
+    bookKeys.forEach(isbn => {
+        if (isbn === requestedIsbn) {
+            found = true;
+
+            if (
+                books[isbn].reviews &&
+                books[isbn].reviews.hasOwnProperty(username)
+            ) {
+                delete books[isbn].reviews[username];
+                return res.status(200).json({
+                    message: "Review deleted successfully.",
+                    isbn,
+                    user: username
+                });
+            } else {
+                return res.status(404).json({
+                    message: "No review by this user found for this book."
+                });
+            }
+        }
+    });
+
+    if (!found) {
+        return res.status(404).json({ message: "Book not found." });
+    }
 });
 
 module.exports.authenticated = regd_users;
